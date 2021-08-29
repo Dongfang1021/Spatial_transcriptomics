@@ -1,9 +1,98 @@
 # Spatial_transcriptomics
-## 概括
+## 1 概括
+### 10X空间转录组技术发展
+2018年，10X Genomics收购了总部位于瑞典斯德哥尔摩的spatial Transcriptomics公司。其现有产品的革命性的工作流程使用了两种带有专利涂层的载玻片。每张基因表达载玻片可以容纳4个单独的组织切片，通过带有位置信息的barcode从而获得空间层面（二维）分辨率的RNA测序数据。
+2016, Science, Spatial transcriptomics (ST)技术，捕获区域上有1007个孔，每个孔中包含有约200万个寡核苷酸，每个孔的直径是100um，孔与孔圆心的距离是200um，捕获区域的面积是6.2mmx6.6mm。
+2019年底，10XGenomics对ST技术进行了更新升级，推出了Visium空间基因表达解决方案--10X空间转录组技术。
+一张载玻片有4个区域，每个区域上有5000个spots，每个spot的直径是55um，相邻spot圆心的距离是100um，每个spot中细胞数目1-10个，捕获区域的面积是6.6mmX6.5mm。
+
+**两种试剂盒**
+
+组织优化试剂盒和基因表达试剂盒
+- Visium Spatial Tissue Optimization slide and Reagent Kit
+  - 4 sample TO kit (4 slides)
+  - Four new tissues can be optimized per TO kit(one new tissue per slide)
+  - No spatial barcodes
+- Visium Spatial Gene Expression Slide and Reagent Kit
+  - 4 reactions (1 slide) and 16 reactions (4 slides) LP kit
+  - Each slide has 4 capture areas containing spatial barcodes
+
+**组织优化试剂盒工作原理**
+![](image/kit.png)
+
+如何判断最优透化时间：
+1. 确保切片厚度一致
+2. 荧光信号亮度，弥散信号
+3. 根据组织形态学（主观）
+4. 根据后续基因表达实验中每个spot中UMI的count数；
+大部分组织：3～30min
+RNA含量越丰富的组织，所需要的透化时间越长。
+
+**官方已测试组织类型**
+https://support.10xgenomics.com/spatial-gene-expression/tissue-optimization/doc/specifications-visium-spatial-gene-expression-optimized-tissues
+
+**基因表达试剂盒工作原理**
+![](image/kit-sequencing.png)
+空间基因表达芯片（LP芯片）包含4个捕获区域（6.5mmx6.5mm），每个区域含有5000个spots，每个spot均含唯一的sptatial barcode和上百万个核苷酸引物，每个spot直径为55um，两个spots中心点间隔100um。对切片进行透化后，细胞释放的mRNA可与带有barcode的引物结合，后续合成cDNA并进行文库的构建。
+依据组织类型不同，每个barcode可对应1～10个细胞（并不是单细胞解决方案）。红色边框的基准点处无oligo序列，其用于将测序数据和图像数据进行整合。
 ![](image/comparison.png)
 单细胞测序是用胶珠和油包水的方法把细胞分开，同时又用barcode保留单细胞信息。Visium空间转录组则是把切片在芯片上展开，在空间上用条形码来保留切片上每个小点的空间位置信息。空间转录组，在操作上是先把切片固定到芯片上，并用H&E染色之后，就可以在显微镜下看到这样的图。
 ![](image/slide.png)
 这里是一个成年小鼠脑部的切片，芯片四周会做许多个小点，这些点是用来在空间上给切片定位用的。
+
+**测序**
+![](image/index.png)
+https://support.10xgenomics.com/spatial-gene-expression/sequencing/doc/specifications-sequencing-requirements-for-visium-spatial-gene-expression
+Minimum Sequencing Depth: We recommend a minimum of 50k read pairs per spot covered with tissue. To calculate this, first estimate the % of capture area covered by the tissue section based upon the H&E brightfield image. Then use the following formula to calculate the recommended sequencing depth:
+
+• Total sequencing depth = (Coverage Area x total spots on the Capture Area) x 50,000 read pairs/spot
+
+Example calculation for 60% tissue coverage: (0.60 x 5,000 total spots) x 50,000 read pairs/spot = 150 million total read pairs for that sample
+
+Additional guidelines for estimating the number of spots covered: Determining number of spots covered with tissue may be performed visually or by using the Visium Manual Alignment Wizard in Loupe Browser for a more accurate measurement.
+
+![](image/read.png)
+** Shorter reads than indicated above can lead to decreased application performance. Sample index reads must not be shorter than indicated. Any read can be longer than recommended. Additional bases in Sample index reads must be trimmed using SpaceRanger mkfastq or Illumina's bcl2fastq prior to further analysis.
+
+数量官方建议：单个spot大于等于50K PE reads，根据组织切片所占spot区域的面积进行估算。
+测序深度=（%覆盖面积X5000）X50000 PE reads
+250-300 M PE reads
+
+## 2 10X空间转录组数据分析
+![](image/data_analysis_workflow.png)
+
+spaceranger mkfastq: 打包了bcl2fastq，将下机芯片的bcl数据转换成fastq数据
+spaceranger count: image和fastq作为输入，进行比对（STAR）、表达量，图像与表达数据整合分析等。https://support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/what-is-space-ranger
+
+Loupe Browser
+本地交互式分析软件，spaceranger count 产生的 .cloupe文件作为输入进行可视化展示，可进行基因筛选、聚类展示，差异表达分析。https://support.10xgenomics.com/spatial-gene-expression/software/visualization/latest/what-is-loupe-browser
+
+**分析流程开发**
+![](image/modified_workflow.png)
+注：虚线框部分将进行两次分析，除10XGenomics官网软件Space Ranger分析之外，会用第三方分析工具Seurat再进行分析，然后进行数据展示。并且对Seurat分析得到的差异表达基因进行GO、KEGG和蛋白互作网络功能分析。
+
+**SpaceRanger**
+```shell
+spaceranger count \ 
+--id=ID \ #结果输出路径，样本名称
+--fastqs=PATH \ #fastq文件路径
+--sample=sample1 \ #fastq文件名前缀，样本名称
+--transcriptome=DIR \ #refdata-cellranger， 参考基因组路径，可以在官网下载已有的物种
+--image=IMG \ #HE染色图片，tif或jpg
+--slide=SLIDE \ #载玻片序列号 ｜ --unknown slide #载玻片序列号未知的情况
+--area=AREA \ #铺货区域，如A1
+--localmem=INT \ #内存数，例如64
+--localcores=INT \ #线程数，例如8
+```
+![](image/out.png)
+barcode: barcode信息
+in_tissue: ‘1’代表该spot被组织切片覆盖，‘0’代表该spot未被组织切片覆盖
+array_row: spot在捕获区域中位于第几行，横坐标，共78行。
+array_col: spot在捕获区域中位于第几列，纵坐标，偶数0-126，奇数1-127，共64个
+pxl_col_in_fullres:图像中spot中心位置的列像素坐标
+pxl_row_in_fullres:图像中spot中心位置的行像素坐标
+
+
 ![](image/web.png)
 我们经过对这个样本的测序，得到的初步结果就是有1.4亿多条的reads， 2699个spot上是有测到序列，每个spot上有表达的基因数量的中值是4851个基因
 ## 聚类分析
@@ -71,3 +160,8 @@ STRING
 与10X数据结合分析意义
 做这个分析，目的在于搞清楚空间转录组当中一个spot当中最可能是什么种类的细胞，或者说占大头的是那一类细胞。
 要做这项工作，首先要对目标样本邻近的组织做一个10X的单细胞测序。但单细胞测序完了之后，再做PCA分析，然后把分析结果与经验数据进行比较，以判定组织中有那些种类的细胞。接下来，再把一个spot中的mRNA数据和用10X方法判断出来的细胞种类，表达值进行比较，找出这个spot中大部分细胞最有可能是那种细胞。
+**一个spot中主要是什么细胞**
+一个村里80%的人姓王，我们就称这个村为“王村”。而旁边的另一个村姓李的人最多，我们就叫那个村为“李村”。类似的，一个spot里面大多数的细胞可能是内皮细胞，那我们就把这个spot标成“内皮细胞”spot，这张就是内皮细胞spot的空间图。
+## 总结
+**整体思路**
+空间转录组，目前的分析思路就是：现对spot进行降维，聚类分析，得到聚类好的cluster，找出mRNA表达差异，结合已有的数据库，对差异高表达进行进一步分析。找到功能，细胞内定位，通路，蛋白，疾病的各种显著性差异，以及各种高富集性，高关联性。与10X数据结合，把spot还原到细胞种类，通过以上方法得到新的科研线索，这就是目前的分析思路。
