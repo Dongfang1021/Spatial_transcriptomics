@@ -103,15 +103,16 @@ pxl_row_in_fullres:图像中spot中心位置的行像素坐标
 我们经过对这个样本的测序，得到的初步结果就是有1.5亿多条的reads， 2699个spot上是有测到序列，每个spot上有表达的基因数量的中值是4889个基因.
 ![](image/web_analysis.png)
 Space Ranger自带的分析结果
-
+mapping之后得到重要的三个文件，后续分析都是基于这三个文件
 ![](image/out1.png)
 
 ![](image/out2.png)
-
+Space Ranger软件自带的分析内容
+**PCA**
 ![](image/out3.png)
-
+**Clustering， tSNE, UMAP**
 ![](image/out4.png)
-
+**Different expression genes**
 ![](image/out5.png)
 
 ### 2.2 Seurat
@@ -122,13 +123,95 @@ object <- Seurat:: Load10X_Spatial(data.dir=opt$datadir)
 # Expression Violin plot
 Spot_exp_plot <- paste(prefix, 'Spots_Count.pdf', sep='')
 #unlink('Rplots.pdf')
-pdf(Spot_exp_plot, width=16, height=8) #主要画图输出
+pdf(Spot_exp_plot, width=16, height=8) #注意画图输出
 plot1 <- VlnPlot(object = object, features="nFeature_Spatial", ncol=1, combine = "False")
 plot2 <- VlnPlot(object = object, features="nCount_Spatial", ncol=1, combine="False")
 CombinePlots(plots=c(plot1, plot2), ncol=2) #输出空间表达小提琴
 print(Spot_exp_plot)
 dev.off()
 ```
+![](image/violin.png)
+
+```R
+# UMI correlation scatter plot
+graph <- paste(prefix, 'CorPlot.pdf', sep='_')
+pdf(graph, width=12, height=8)
+plot1 <- FeatureScatter(object = object, feature1 = "nFeature_Spatial", feature2="nCount_Spatial")
+plot1 #输出feature和count相关性
+print(graph)
+dev.off()
+```
+![](image/corplot.png)
+
+```R
+#空间Spots覆盖深度显示
+graph <- paste(prefix, 'nCount_Spatial.pdf', sep='_')
+pdf(graph, width=12, height=8)
+plot1 <- VlnPlot(object, features="nCount_Spatial", pt.size=0.1)+NoLegend()
+plot2 <- SpatialFeaturePlot(object, features="nCount_Spatial")+theme(legend.position = "right")
+plot_grid(plot1, plot2)##输出空间表达图
+print(graph)
+dev.off()
+```
+![](image/coverage.png)
+
+
+选取高度可变基因进行主成分分析，并选取Top30 gene进行展示
+```R
+graph <- paste(prefix, 'PCA_Heatmap.pdf', sep='_')
+pdf(graph, w=12, h=8)
+DimHeatmap(object = object, dims=1:2, cells=cell_for_heatmap, balanced=TRUE) ### or pc.use=1:10
+print(graph)
+dev.off()
+```
+![](image/PCA_heatmap.png)
+Top20 PCA
+```R
+##Running UMAP
+object <- RunUMAP(object, umap.method="umap-learn", dims=1:20, metric="correlation")
+umapResult <- object@reductions$umap@cell.embeddings
+file <- paste(prefix, 'umap_gene.csv', sep='')
+print(file)
+write.csv(umapResult, file, quote=F)
+## plot UMAP
+umap_plot <- paste(prefix, 'cluster_umap.pdf', sep='_')
+pdf(umap_plot, width=10, height=10)
+p1<- DimPlot(object, reduction="umap", label=TRUE)
+p2<- SpatialDimPlot(object, label=TRUE, label_size=4)
+plot_grid(p1, p2)
+print(umap_plot)
+dev.off()
+```
+![](image/cluster_umap.png)
+
+**差异表达分析**
+```R
+###high light marker gene
+graph <- paste(prefix, 'High_MarkerGenes.pdf', sep='_')
+pdf(graph, w=12, h=8)
+SpatialFeaturePlot(object=object, features=top$gene, alpha = c(0, 1,1), ncol=3)
+print(graph)
+dev.off()
+```
+![](image/high_markergenes.png)
+
+每个cluster中前5个marker基因的表达量热图
+```R
+#top de gene heatmap
+top5 <- object.markers %>% group_by(cluster) %>% top_n(5, avg_logFC)
+graph <- paste(prefix, 'top_de.pdf', sep='_')
+pdf(graph, w=12, h=8)
+DoHeatmap(object=object, features=top5$gene) + NoLegend()
+print(graph)
+dev.off()
+```
+![](image/top_de.png)
+
+
+
+### 2.3 功能注释
+
+
 ## 聚类分析
 几千个spot，每个spot有几千个甚至上万个基因的表达量，这远远超出了普通人能够理解或者想象的范围
 ![](image/cluster.png)
