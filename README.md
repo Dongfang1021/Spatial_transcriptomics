@@ -282,3 +282,8 @@ STRING
 ## 总结
 **整体思路**
 空间转录组，目前的分析思路就是：现对spot进行降维，聚类分析，得到聚类好的cluster，找出mRNA表达差异，结合已有的数据库，对差异高表达进行进一步分析。找到功能，细胞内定位，通路，蛋白，疾病的各种显著性差异，以及各种高富集性，高关联性。与10X数据结合，把spot还原到细胞种类，通过以上方法得到新的科研线索，这就是目前的分析思路。
+Barcoded solid-phase RNA capture for Spatial Transcriptomics profiling in mammalian tissue sections
+https://github.com/SpatialTranscriptomicsResearch/st_pipeline
+https://github.com/jfnavarro/st_pipeline
+A spatiotemporal organ-wide gene expression and cell atlas of the developing human heart
+Integrating microarray-based spatial transcriptomics and single-cell RNA-seq reveals tissue architecture in pancreatic ductal adenocarcinomas
