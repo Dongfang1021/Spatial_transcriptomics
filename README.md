@@ -70,8 +70,10 @@ Loupe Browser
 **分析流程开发**
 ![](image/modified_workflow.png)
 注：虚线框部分将进行两次分析，除10XGenomics官网软件Space Ranger分析之外，会用第三方分析工具Seurat再进行分析，然后进行数据展示。并且对Seurat分析得到的差异表达基因进行GO、KEGG和蛋白互作网络功能分析。
+### 2.1 SpaceRanger
 
-**SpaceRanger**
+```space ranger``` is used for mapping and counting.
+
 ```shell
 spaceranger count \ 
 --id=ID \ #结果输出路径，样本名称
@@ -84,6 +86,10 @@ spaceranger count \
 --localmem=INT \ #内存数，例如64
 --localcores=INT \ #线程数，例如8
 ```
+
+**输出结果**
+
+
 ![](image/out.png)
 barcode: barcode信息
 in_tissue: ‘1’代表该spot被组织切片覆盖，‘0’代表该spot未被组织切片覆盖
@@ -94,7 +100,35 @@ pxl_row_in_fullres:图像中spot中心位置的行像素坐标
 
 
 ![](image/web.png)
-我们经过对这个样本的测序，得到的初步结果就是有1.4亿多条的reads， 2699个spot上是有测到序列，每个spot上有表达的基因数量的中值是4851个基因
+我们经过对这个样本的测序，得到的初步结果就是有1.5亿多条的reads， 2699个spot上是有测到序列，每个spot上有表达的基因数量的中值是4889个基因.
+![](image/web_analysis.png)
+Space Ranger自带的分析结果
+
+![](image/out1.png)
+
+![](image/out2.png)
+
+![](image/out3.png)
+
+![](image/out4.png)
+
+![](image/out5.png)
+
+### 2.2 Seurat
+Seurat功能包括细胞筛选，数据标准化，PCA分析，t-SNE，差异基因分析等。新版Seurat加入空间和分子的集成，更好的适用于空间转录组分析。
+```R
+# Creat ojbect
+object <- Seurat:: Load10X_Spatial(data.dir=opt$datadir)
+# Expression Violin plot
+Spot_exp_plot <- paste(prefix, 'Spots_Count.pdf', sep='')
+#unlink('Rplots.pdf')
+pdf(Spot_exp_plot, width=16, height=8) #主要画图输出
+plot1 <- VlnPlot(object = object, features="nFeature_Spatial", ncol=1, combine = "False")
+plot2 <- VlnPlot(object = object, features="nCount_Spatial", ncol=1, combine="False")
+CombinePlots(plots=c(plot1, plot2), ncol=2) #输出空间表达小提琴
+print(Spot_exp_plot)
+dev.off()
+```
 ## 聚类分析
 几千个spot，每个spot有几千个甚至上万个基因的表达量，这远远超出了普通人能够理解或者想象的范围
 ![](image/cluster.png)
